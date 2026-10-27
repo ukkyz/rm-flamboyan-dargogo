@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { gameScores, users, pointHistory } from "@/db/schema";
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, gte, and } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 
 export async function GET() {
@@ -21,11 +21,12 @@ export async function POST(req: Request) {
     let pointsEarned = Math.min(20, Math.floor(score / 100));
     // batasi: total bonus game per user per hari maks 60
     if (session && pointsEarned > 0) {
-      const today = await db.execute(sql`
-        SELECT COALESCE(SUM(points_earned),0)::int as total FROM game_scores
-        WHERE user_id = ${session.id} AND created_at >= NOW() - INTERVAL '1 day'
-      `);
-      const usedToday = Number((today.rows[0] as { total: number })?.total || 0);
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const todayRows = await db
+        .select({ pointsEarned: gameScores.pointsEarned })
+        .from(gameScores)
+        .where(and(eq(gameScores.userId, session.id), gte(gameScores.createdAt, yesterday)));
+      const usedToday = todayRows.reduce((s, r) => s + (r.pointsEarned || 0), 0);
       const remaining = Math.max(0, 60 - usedToday);
       pointsEarned = Math.min(pointsEarned, remaining);
     }
@@ -44,10 +45,13 @@ export async function POST(req: Request) {
       .returning();
 
     if (session && pointsEarned > 0) {
-      const uRows = await db.select().from(users);
-      const u = uRows.find((x) => x.id === session.id);
+      const uRows = await db.select().from(users).where(eq(users.id, session.id));
+      const u = uRows[0];
       if (u) {
-        await db.update(users).set({ points: u.points + pointsEarned }).where(sql`id = ${u.id}`);
+        await db
+          .update(users)
+          .set({ points: u.points + pointsEarned })
+          .where(eq(users.id, u.id));
         await db.insert(pointHistory).values({
           userId: u.id,
           type: "bonus_game",

@@ -94,7 +94,7 @@ export default function Navbar() {
             </span>
             <div className="leading-tight">
               <p className="font-black text-sm sm:text-base bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 bg-clip-text text-transparent">
-                RM PADANG NUSANTARA
+                RM Flamboyan by Pak De Dargogo
               </p>
               <p className="text-[10px] tracking-[0.3em] text-slate-400 uppercase">
                 Futuristik • Autentik

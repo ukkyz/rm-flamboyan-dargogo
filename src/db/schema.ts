@@ -1,139 +1,126 @@
-import {
-  pgTable,
-  serial,
-  varchar,
-  text,
-  integer,
-  timestamp,
-  boolean,
-  pgEnum,
-} from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
-export const userRoleEnum = pgEnum("user_role", ["customer", "admin", "kasir"]);
-export const orderStatusEnum = pgEnum("order_status", [
-  "pending",
-  "cooking",
-  "ready",
-  "completed",
-  "cancelled",
-]);
-export const orderTypeEnum = pgEnum("order_type", ["dine_in", "takeaway", "delivery"]);
-export const txnTypeEnum = pgEnum("txn_type", ["income", "expense"]);
-export const pointTypeEnum = pgEnum("point_type", ["earn", "redeem", "bonus_game", "adjust"]);
+const now = () => new Date();
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 120 }).notNull(),
-  email: varchar("email", { length: 160 }).notNull().unique(),
-  phone: varchar("phone", { length: 30 }),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  phone: text("phone"),
   passwordHash: text("password_hash").notNull(),
-  role: userRoleEnum("role").default("customer").notNull(),
+  role: text("role", { enum: ["customer", "admin", "kasir"] })
+    .default("customer")
+    .notNull(),
   points: integer("points").default(0).notNull(),
   totalSpent: integer("total_spent").default(0).notNull(),
-  level: varchar("level", { length: 30 }).default("Perunggu").notNull(),
-  avatar: varchar("avatar", { length: 10 }).default("🍛").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  level: text("level").default("Perunggu").notNull(),
+  avatar: text("avatar").default("🍛").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const menuItems = pgTable("menu_items", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 120 }).notNull(),
+export const menuItems = sqliteTable("menu_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
   description: text("description"),
   price: integer("price").notNull(),
-  category: varchar("category", { length: 60 }).notNull(),
-  image: varchar("image", { length: 255 }),
-  emoji: varchar("emoji", { length: 10 }).default("🍛").notNull(),
-  isAvailable: boolean("is_available").default(true).notNull(),
+  category: text("category").notNull(),
+  image: text("image"),
+  emoji: text("emoji").default("🍛").notNull(),
+  isAvailable: integer("is_available", { mode: "boolean" }).default(true).notNull(),
   isSpicy: integer("is_spicy").default(0).notNull(),
   stock: integer("stock").default(100).notNull(),
   soldCount: integer("sold_count").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const orders = pgTable("orders", {
-  id: serial("id").primaryKey(),
-  code: varchar("code", { length: 30 }).notNull().unique(),
+export const orders = sqliteTable("orders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  code: text("code").notNull().unique(),
   userId: integer("user_id"),
-  customerName: varchar("customer_name", { length: 120 }),
-  customerPhone: varchar("customer_phone", { length: 30 }),
-  type: orderTypeEnum("type").default("dine_in").notNull(),
-  tableNumber: varchar("table_number", { length: 20 }),
+  customerName: text("customer_name"),
+  customerPhone: text("customer_phone"),
+  type: text("type", { enum: ["dine_in", "takeaway", "delivery"] })
+    .default("dine_in")
+    .notNull(),
+  tableNumber: text("table_number"),
   address: text("address"),
   notes: text("notes"),
-  status: orderStatusEnum("status").default("pending").notNull(),
+  status: text("status", { enum: ["pending", "cooking", "ready", "completed", "cancelled"] })
+    .default("pending")
+    .notNull(),
   subtotal: integer("subtotal").default(0).notNull(),
   discount: integer("discount").default(0).notNull(),
   total: integer("total").default(0).notNull(),
-  paymentMethod: varchar("payment_method", { length: 40 }).default("tunai").notNull(),
+  paymentMethod: text("payment_method").default("tunai").notNull(),
   pointsEarned: integer("points_earned").default(0).notNull(),
   pointsUsed: integer("points_used").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
+export const orderItems = sqliteTable("order_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   orderId: integer("order_id").notNull(),
   menuItemId: integer("menu_item_id"),
-  menuName: varchar("menu_name", { length: 120 }).notNull(),
-  menuEmoji: varchar("menu_emoji", { length: 10 }).default("🍛").notNull(),
+  menuName: text("menu_name").notNull(),
+  menuEmoji: text("menu_emoji").default("🍛").notNull(),
   qty: integer("qty").notNull(),
   price: integer("price").notNull(),
   subtotal: integer("subtotal").notNull(),
 });
 
-export const transactions = pgTable("transactions", {
-  id: serial("id").primaryKey(),
-  type: txnTypeEnum("type").notNull(),
-  category: varchar("category", { length: 80 }).notNull(),
+export const transactions = sqliteTable("transactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  type: text("type", { enum: ["income", "expense"] }).notNull(),
+  category: text("category").notNull(),
   amount: integer("amount").notNull(),
   description: text("description"),
-  date: timestamp("date").defaultNow().notNull(),
+  date: integer("date", { mode: "timestamp" }).notNull().$defaultFn(now),
   relatedOrderId: integer("related_order_id"),
-  createdBy: varchar("created_by", { length: 120 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const pointHistory = pgTable("point_history", {
-  id: serial("id").primaryKey(),
+export const pointHistory = sqliteTable("point_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
-  type: pointTypeEnum("type").notNull(),
+  type: text("type", { enum: ["earn", "redeem", "bonus_game", "adjust"] }).notNull(),
   amount: integer("amount").notNull(),
   description: text("description"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const rewards = pgTable("rewards", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 120 }).notNull(),
+export const rewards = sqliteTable("rewards", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
   description: text("description"),
   pointsCost: integer("points_cost").notNull(),
   stock: integer("stock").default(50).notNull(),
-  emoji: varchar("emoji", { length: 10 }).default("🎁").notNull(),
-  image: varchar("image", { length: 255 }),
-  isActive: boolean("is_active").default(true).notNull(),
+  emoji: text("emoji").default("🎁").notNull(),
+  image: text("image"),
+  isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
   redeemedCount: integer("redeemed_count").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const redemptions = pgTable("redemptions", {
-  id: serial("id").primaryKey(),
-  code: varchar("code", { length: 30 }).notNull().unique(),
+export const redemptions = sqliteTable("redemptions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  code: text("code").notNull().unique(),
   userId: integer("user_id").notNull(),
   rewardId: integer("reward_id"),
-  rewardName: varchar("reward_name", { length: 120 }).notNull(),
+  rewardName: text("reward_name").notNull(),
   pointsSpent: integer("points_spent").notNull(),
-  status: varchar("status", { length: 30 }).default("active").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  status: text("status").default("active").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });
 
-export const gameScores = pgTable("game_scores", {
-  id: serial("id").primaryKey(),
+export const gameScores = sqliteTable("game_scores", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id"),
-  playerName: varchar("player_name", { length: 120 }).notNull(),
-  gameType: varchar("game_type", { length: 60 }).notNull(),
+  playerName: text("player_name").notNull(),
+  gameType: text("game_type").notNull(),
   score: integer("score").notNull(),
   pointsEarned: integer("points_earned").default(0).notNull(),
   level: integer("level").default(1).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(now),
 });

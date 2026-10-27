@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, orderItems, menuItems, users, pointHistory, transactions } from "@/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { getSession, levelForSpent, pointsForAmount } from "@/lib/auth";
 import { orderCode } from "@/lib/utils";
 

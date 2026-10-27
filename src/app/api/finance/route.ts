@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { transactions, orders } from "@/db/schema";
-import { desc, eq, sql, gte } from "drizzle-orm";
+import { desc, eq, gte, and } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
+
+type Daily = { label: string; income: number; expense: number };
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -14,55 +16,66 @@ export async function GET(req: Request) {
 
   const since = new Date();
   since.setDate(since.getDate() - days);
+  since.setHours(0, 0, 0, 0);
 
   const txns = await db
     .select()
     .from(transactions)
     .where(gte(transactions.date, since))
     .orderBy(desc(transactions.date))
-    .limit(200);
+    .limit(500);
 
-  const totals = await db
-    .select({
-      type: transactions.type,
-      sum: sql<number>`COALESCE(SUM(${transactions.amount}),0)`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(gte(transactions.date, since))
-    .groupBy(transactions.type);
+  const income = txns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expense = txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
-  let income = 0,
-    expense = 0;
-  for (const t of totals) {
-    if (t.type === "income") income = Number(t.sum);
-    else expense = Number(t.sum);
+  // agregasi harian 14 hari terakhir
+  const dailyMap = new Map<string, Daily>();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    dailyMap.set(key, {
+      label: d.toLocaleDateString("id-ID", { day: "2-digit", month: "short" }),
+      income: 0,
+      expense: 0,
+    });
   }
-
-  // harian 14 hari
-  const daily = await db.execute(sql`
-    SELECT to_char(date, 'DD Mon') as label,
-           SUM(CASE WHEN type='income' THEN amount ELSE 0 END)::int as income,
-           SUM(CASE WHEN type='expense' THEN amount ELSE 0 END)::int as expense
-    FROM transactions
-    WHERE date >= NOW() - INTERVAL '14 days'
-    GROUP BY to_char(date, 'DD Mon'), date_trunc('day', date)
-    ORDER BY date_trunc('day', date) ASC
-  `);
+  for (const t of txns) {
+    const key = new Date(t.date).toISOString().slice(0, 10);
+    const bucket = dailyMap.get(key);
+    if (!bucket) continue;
+    if (t.type === "income") bucket.income += t.amount;
+    else bucket.expense += t.amount;
+  }
+  const daily = Array.from(dailyMap.values());
 
   // kategori pengeluaran
-  const byCat = await db.execute(sql`
-    SELECT category, SUM(amount)::int as total
-    FROM transactions
-    WHERE type='expense' AND date >= NOW() - INTERVAL '30 days'
-    GROUP BY category ORDER BY total DESC
-  `);
+  const catMap = new Map<string, number>();
+  for (const t of txns) {
+    if (t.type !== "expense") continue;
+    catMap.set(t.category, (catMap.get(t.category) || 0) + t.amount);
+  }
+  const byCat = Array.from(catMap.entries())
+    .map(([category, total]) => ({ category, total }))
+    .sort((a, b) => b.total - a.total);
 
-  // order stats
-  const orderStats = await db.execute(sql`
-    SELECT status, COUNT(*)::int as count, COALESCE(SUM(total),0)::int as total
-    FROM orders GROUP BY status
-  `);
+  // statistik pesanan
+  const allOrders = await db.select().from(orders).orderBy(desc(orders.createdAt)).limit(500);
+  const statusMap = new Map<string, { count: number; total: number }>();
+  for (const o of allOrders) {
+    const cur = statusMap.get(o.status) || { count: 0, total: 0 };
+    if (o.status !== "cancelled") {
+      statusMap.set(o.status, { count: cur.count + 1, total: cur.total + o.total });
+    } else {
+      statusMap.set(o.status, { count: cur.count + 1, total: cur.total });
+    }
+  }
+  const orderStats = Array.from(statusMap.entries()).map(([status, v]) => ({
+    status,
+    count: v.count,
+    total: v.total,
+  }));
 
   return NextResponse.json({
     txns,
@@ -72,9 +85,9 @@ export async function GET(req: Request) {
       profit: income - expense,
       margin: income > 0 ? Math.round(((income - expense) / income) * 100) : 0,
     },
-    daily: daily.rows,
-    byCat: byCat.rows,
-    orderStats: orderStats.rows,
+    daily,
+    byCat,
+    orderStats,
   });
 }
 
@@ -92,10 +105,11 @@ export async function POST(req: Request) {
     const inserted = await db
       .insert(transactions)
       .values({
-        type,
+        type: type === "income" ? "income" : "expense",
         category,
         amount: Number(amount),
         description: description || "",
+        date: new Date(),
         createdBy: session.name,
       })
       .returning();
@@ -113,6 +127,6 @@ export async function DELETE(req: Request) {
   }
   const { searchParams } = new URL(req.url);
   const id = Number(searchParams.get("id"));
-  await db.delete(transactions).where(eq(transactions.id, id));
+  await db.delete(transactions).where(and(eq(transactions.id, id)));
   return NextResponse.json({ ok: true });
 }

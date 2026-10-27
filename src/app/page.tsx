@@ -137,7 +137,7 @@ export default function LandingPage() {
       <div ref={heroRef} className="relative min-h-[108vh] flex items-center overflow-hidden">
         <motion.div style={{ y: bgY, scale: bgScale }} className="absolute inset-0">
           <img
-            src="/images/rm-padang.jpg"
+            src="../../public/images/rm-padang.jpg"
             alt="Rumah Makan Padang"
             className="w-full h-full object-cover"
           />

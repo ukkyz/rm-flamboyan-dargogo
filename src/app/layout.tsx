@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 
-export const metadata: Metadata = {
-  title: "RM Padang Nusantara — Rasa Autentik, Teknologi Futuristik",
+export const metadata = {
+  title: "RM Flamboyan by Pak De Dargogo — Rasa Autentik, Teknologi Futuristik",
   description:
     "Rumah Makan Padang modern: pesan online, loyalty poin, kelola keuangan, dan game memasak anak.",
 };
@@ -34,7 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-2 text-xl font-black">
                 <span className="text-3xl">🍛</span>
                 <span className="bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 bg-clip-text text-transparent">
-                  RM Padang Nusantara
+                  RM Flamboyan by Pak De Dargogo
                 </span>
               </div>
               <p className="mt-3 text-slate-400">
@@ -69,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="border-t border-white/10 py-4 text-center text-xs text-slate-500">
-            © 2026 RM Padang Nusantara • Dibuat dengan ❤️ dan cabai hijau
+            © 2026 RM Flamboyan by Pak De Dargogo • Dibuat dengan ❤️ dan cabai hijau
           </div>
         </footer>
       </body>

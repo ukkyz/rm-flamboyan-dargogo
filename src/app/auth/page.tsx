@@ -95,7 +95,7 @@ export default function AuthPage() {
             <h1 className="mt-4 text-3xl font-black leading-tight">
               Gabung Keluarga{" "}
               <span className="bg-gradient-to-r from-amber-300 to-rose-400 bg-clip-text text-transparent">
-                RM Padang Nusantara
+                RM Flamboyan by Pak De Dargogo
               </span>
             </h1>
             <ul className="mt-6 space-y-3 text-sm text-slate-300">
